@@ -177,6 +177,9 @@ public abstract class MainServlet<P extends BaseForm> extends HttpServlet
 		}
 		catch(Exception ex)
 		{
+			log("Transaction error", ex);
+			container.setAttr("error", ex);
+
 			if(!action.isReadOnly())
 			{
 				// ロールバック
@@ -184,11 +187,11 @@ public abstract class MainServlet<P extends BaseForm> extends HttpServlet
 				{
 					DBAgent.rollback();
 				}
-				catch(SQLException ex2) { }
+				catch(SQLException ex2)
+				{
+					log("Rollback error", ex2);
+				}
 			}
-
-			log("Transaction error", ex);
-			container.setAttr("error", ex);
 
 			// エラー時ページ遷移
 			try
@@ -197,7 +200,7 @@ public abstract class MainServlet<P extends BaseForm> extends HttpServlet
 			}
 			catch(Exception ex3)
 			{
-				log("Error page moving error", ex);
+				log("Error page moving error", ex3);
 			}
 		}
 		finally
@@ -207,7 +210,10 @@ public abstract class MainServlet<P extends BaseForm> extends HttpServlet
 			{
 				DBAgent.dispose();
 			}
-			catch(SQLException ex) { }
+			catch(SQLException ex)
+			{
+				log("Disposed error", ex);
+			}
 		}
 	}
 
