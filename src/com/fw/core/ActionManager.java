@@ -19,8 +19,8 @@ import com.fw.form.BaseForm;
  */
 public class ActionManager<P extends BaseForm>
 {
-	// アクションリスト
-	private List<Action<P>> _actions;
+	// アクションクラスリスト
+	private List<Class<Action<P>>> _actionClasses;
 
 	// 固有情報
 	private ActionSpecificInfo _info;
@@ -32,7 +32,7 @@ public class ActionManager<P extends BaseForm>
 	 */
 	ActionManager(ActionSpecificInfo info)
 	{
-		_actions = new ArrayList<>();
+		_actionClasses = new ArrayList<>();
 		_info = info;
 		searchActions(info.getPackageNameWhereActionImplExists());
 	}
@@ -74,19 +74,13 @@ public class ActionManager<P extends BaseForm>
 						{
 							if(clazz.getAnnotation(Page.class) != null)
 							{
-								// Action 実装クラスをインスタンス化し、リストに追加
-								@SuppressWarnings("unchecked")
-								Action<P> instance = (Action<P>)clazz.getDeclaredConstructor().newInstance();
-								_actions.add(instance);
+								// Action 実装クラスをリストに追加
+								_actionClasses.add((Class<Action<P>>)clazz);
 							}
 						}
 					}
 				}
-				catch(Exception ex)
-				{
-					// Action 実装クラスをインスタンス化する過程で例外が発生した場合
-					throw new RuntimeException("Action instantiation error", ex);
-				}
+				catch(ClassNotFoundException ex) { }
 			}
 		}
 
@@ -116,18 +110,12 @@ public class ActionManager<P extends BaseForm>
 						{
 							if(clazz.getAnnotation(Page.class) != null)
 							{
-								// Action 実装クラスをインスタンス化し、リストに追加
-								@SuppressWarnings("unchecked")
-								Action<P> instance = (Action<P>)clazz.getDeclaredConstructor().newInstance();
-								_actions.add(instance);
+								// Action 実装クラスをリストに追加
+								_actionClasses.add((Class<Action<P>>)clazz);
 							}
 						}
 					}
-					catch(Exception ex)
-					{
-						// Action 実装クラスをインスタンス化する過程で例外が発生した場合
-						throw new RuntimeException("Action instantiation error", ex);
-					}
+					catch(ClassNotFoundException ex) { }
 				}
 			}
 			catch(IOException ex) { }
@@ -142,35 +130,43 @@ public class ActionManager<P extends BaseForm>
 	 *
 	 * @param pageId ページID
 	 * @param eventId イベントID
-	 * @return 対応する {@link Action} の実装。存在しない場合、{@link ActionSpecificInfo#getDefaultAction()} の返り値。
+	 * @return 対応する {@link Action} の実装。存在しない場合、{@link ActionSpecificInfo#createDefaultAction()} の返り値。
 	 */
 	Action<P> find(String pageId, String eventId)
 	{
-		if(pageId == null) return _info.getDefaultAction();
+		if(pageId == null) return _info.createDefaultAction();
 
-		for(Action<P> action : _actions)
+		for(Class<Action<P>> clazz : _actionClasses)
 		{
-			Page page = action.getClass().getAnnotation(Page.class);
+			Page page = clazz.getAnnotation(Page.class);
 			if(pageId.equals(page.pageId()))
 			{
-				if(eventId == null)
+				try
 				{
-					// イベントIDの指定が無い場合でも、アノテーションのイベントIDが"*"であればＯＫ
-					if(page.eventId().equals("*"))
+					if(eventId == null)
 					{
-						return action;
+						// イベントIDの指定が無い場合でも、アノテーションのイベントIDが"*"であればＯＫ
+						if(page.eventId().equals("*"))
+						{
+							return (Action<P>)clazz.getDeclaredConstructor().newInstance();
+						}
+					}
+					else
+					{
+						if(eventId.equals(page.eventId()))
+						{
+							return (Action<P>)clazz.getDeclaredConstructor().newInstance();
+						}
 					}
 				}
-				else
+				catch(Exception ex)
 				{
-					if(eventId.equals(page.eventId()))
-					{
-						return action;
-					}
+					// Action 実装クラスをインスタンス化する過程で例外が発生した場合
+					throw new RuntimeException("Action instantiation error", ex);
 				}
 			}
 		}
 
-		return _info.getDefaultAction();
+		return _info.createDefaultAction();
 	}
 }
