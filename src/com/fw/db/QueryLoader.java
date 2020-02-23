@@ -1,6 +1,7 @@
 package com.fw.db;
 
 import java.beans.PropertyDescriptor;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -64,6 +65,39 @@ public class QueryLoader
 			if(rs.next())
 			{
 				value = new Integer(rs.getInt(1));
+				if(rs.wasNull())
+				{
+					value = null;
+				}
+			}
+		}
+
+		return value;
+	}
+
+	/**
+	 * バイナリデータをデータベースから取得する。
+	 * <p>
+	 * 単一の InputSteram 型の値を取得する場合に利用する。
+	 * </p>
+	 *
+	 * @param query クエリ
+	 * @param params プレースホルダーに対応する値をプレースホルダーの順に指定
+	 * @return データベースから取得したバイナリ値（取得できなかった場合、null）
+	 * @throws SQLException データベース関連例外
+	 */
+	public static InputStream loadAsBinary(String query, Object... params) throws SQLException
+	{
+		InputStream value = null;
+		try
+		(
+			PreparedStatement stmt = createStatement(query, params);
+		)
+		{
+			ResultSet rs = stmt.executeQuery();
+			if(rs.next())
+			{
+				value = rs.getBinaryStream(1);
 				if(rs.wasNull())
 				{
 					value = null;
